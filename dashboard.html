@@ -3,76 +3,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Native App Curation Dashboard</title>
+  <title>Native App Curator Dashboard</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
-    h1 { border-bottom: 2px solid #334155; padding-bottom: 0.5rem; color: #38bdf8; }
-    .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
-    .app-card { background: #1e293b; border-radius: 8px; padding: 1.5rem; border: 1px solid #334155; }
-    .card-header { display: flex; justify-space-between: space-between; align-items: center; }
-    .platform-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
-    .macos { background: #0284c7; color: white; }
-    .windows { background: #2563eb; color: white; }
-    .ipados { background: #7c3aed; color: white; }
-    .quality-tag { font-size: 0.8rem; color: #94a3b8; display: block; margin-top: 1rem; font-style: italic; }
-    a { color: #38bdf8; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --mac-color: #ff5f56;
+      --win-color: #00a4ef;
+      --ipad-color: #af52de;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 2rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 { font-size: 2.2rem; color: #f0f6fc; margin-bottom: 0.5rem; }
+    p.subtitle { color: var(--text-muted); font-size: 1rem; }
+
+    .category-section {
+      margin-bottom: 3rem;
+    }
+
+    .category-title {
+      font-size: 1.4rem;
+      color: #f0f6fc;
+      margin-bottom: 1.2rem;
+      border-left: 4px solid var(--accent);
+      padding-left: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .app-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .app-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+
+    .app-media {
+      width: 100%;
+      height: 180px;
+      background-color: #21262d;
+      object-fit: cover;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .app-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .app-title {
+      font-size: 1.2rem;
+      color: #f0f6fc;
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+
+    .badge.macos { background: rgba(255, 95, 86, 0.15); color: var(--mac-color); border: 1px solid var(--mac-color); }
+    .badge.windows { background: rgba(0, 164, 239, 0.15); color: var(--win-color); border: 1px solid var(--win-color); }
+    .badge.ipados { background: rgba(175, 82, 222, 0.15); color: var(--ipad-color); border: 1px solid var(--ipad-color); }
+
+    .description {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      flex-grow: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .tech-tag {
+      color: var(--accent);
+      font-family: monospace;
+      background: rgba(88, 166, 255, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .source-link {
+      color: #f0f6fc;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .source-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Native App Releases</h1>
-  <div id="runs-container">
-    <!-- Automated runs will append new content below this line -->
 
+  <header>
+    <h1>Native App Curation Directory</h1>
+    <p class="subtitle">Zero web-wrappers. Only genuine Swift, Rust, C++, WinUI 3, and Metal software.</p>
+  </header>
 
-<div>
-  <div class="app-card">
-    <div class="card-header">
-      <h3>Sayline</h3>
-      <span class="platform-badge macos">macOS</span>
+  <!-- CATEGORY: DEVELOPER & SYSTEM UTILITIES -->
+  <section class="category-section">
+    <h2 class="category-title">Developer & System Utilities</h2>
+    <div class="grid" id="dev-grid">
+      <!-- App Cards Append Here -->
     </div>
-    <p><a href="https://www.producthunt.com/products/sayline" target="_blank">View Release / Source</a></p>
-    <p>A native macOS app that delivers private, local voice dictation into any text field via global hotkeys. It stands out by running entirely on-device using NVIDIA Parakeet and MLX so your audio never leaves your Mac.</p>
-    <span class="quality-tag">Swift / MLX On-Device Speech Utility</span>
-  </div>
+  </section>
 
-  <div class="app-card">
-    <div class="card-header">
-      <h3>Tangrid</h3>
-      <span class="platform-badge macos">macOS</span>
+  <!-- CATEGORY: PRODUCTIVITY & CREATIVE -->
+  <section class="category-section">
+    <h2 class="category-title">Productivity & Creative</h2>
+    <div class="grid" id="prod-grid">
+      <!-- App Cards Append Here -->
     </div>
-    <p><a href="https://www.reddit.com/r/macapps/" target="_blank">View Release / Source</a></p>
-    <p>A high-performance native window manager featuring drag snapping, binary space partitioning tiling layouts, and a tabbed window group view. It stands out by blending advanced tiling with fluid mouse workflows and native macOS Spaces support.</p>
-    <span class="quality-tag">Swift / SwiftUI / AppKit</span>
-  </div>
+  </section>
 
-  <div class="app-card">
-    <div class="card-header">
-      <h3>NotchMind</h3>
-      <span class="platform-badge macos">macOS</span>
-    </div>
-    <p><a href="https://www.producthunt.com/products/notchmind" target="_blank">View Release / Source</a></p>
-    <p>A native macOS utility that transforms the MacBook camera housing notch into an interactive hub for music controls, file drop zones, and secure clipboard history. It stands out by offering a seamless system extension with zero background bloat.</p>
-    <span class="quality-tag">Swift / Apple Silicon Menu Bar Extension</span>
-  </div>
-
-  <div class="app-card">
-    <div class="card-header">
-      <h3>Nought</h3>
-      <span class="platform-badge macos">macOS</span>
-    </div>
-    <p><a href="https://www.reddit.com/r/macapps/" target="_blank">View Release / Source</a></p>
-    <p>An ultra-lightweight, offline-only spreadsheet application built for speed with a tiny footprint. It stands out by offering instant document launching and data parsing without cloud dependencies or heavy runtime overhead.</p>
-    <span class="quality-tag">Native AppKit / Local Spreadsheet Engine</span>
-  </div>
-</div>
-
-<div class="app-card">
-  <div class="card-header">
-    <h3>MacSai</h3>
-    <span class="platform-badge macos">macOS</span>
-  </div>
-  <p><a href="https://github.com/iliyami/MacSai" target="_blank">View Release / Source</a></p>
-  <p>MacSai is a powerful open-source cleaner, optimizer, and malware scanner designed as a native alternative to heavyweight proprietary tools. Built entirely with Swift 6 and SwiftUI, it delivers lightning-fast system performance auditing with minimal memory footprint.</p>
-  <span class="quality-tag">Swift 6 / SwiftUI</span>
-</div>
+</body>
+</html>
