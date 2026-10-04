@@ -1,0 +1,3 @@
+App Name,Status,Details
+MacSai,ACCEPTED,Swift 6 / SwiftUI
+Generic Web Wrapper AI Chat,REJECTED,Excluded due to being a single-prompt ChatGPT API wrapper using Electron web technologies.
