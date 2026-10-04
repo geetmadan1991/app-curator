@@ -2,7 +2,7 @@ import os
 import re
 import csv
 import json
-from google import genai
+import genai
 from google.genai import types
 
 # 1. Initialize Gemini Client
