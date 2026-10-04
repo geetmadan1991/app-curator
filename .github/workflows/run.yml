@@ -1,0 +1,34 @@
+name: Autonomous App Curator
+
+on:
+  schedule:
+    - cron: '0 12 * * 0'  # Runs automatically every Sunday at 12:00 UTC (8:00 AM EST)
+  workflow_dispatch:       # Enables a manual "Run Now" button in the GitHub UI
+
+jobs:
+  curate-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Google GenAI SDK
+        run: pip install google-genai
+
+      - name: Run Curator Engine
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python curate.py
+
+      - name: Commit updated HTML to repository
+        run: |
+          git config --global user.name "GitHub Action Curator"
+          git config --global user.email "action@github.com"
+          git add dashboard.html
+          git commit -m "Auto-curated new native apps" || exit 0
+          git push
