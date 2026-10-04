@@ -6,3 +6,15 @@ Ember,ACCEPTED,SwiftUI / Combine
 Files WinUI,ACCEPTED,C# / WinUI 3
 Scissor Studio,REJECTED,Rejected because it is a WebAssembly PWA browser-based design tool rather than a native platform-compiled desktop application.
 PCBJam,REJECTED,Rejected because it is a browser port of KiCad running inside web standards rather than a native desktop binary.
+CueStart,ACCEPTED,Swift / SwiftUI
+visualOS,ACCEPTED,SwiftUI / PencilKit
+WinApp,ACCEPTED,C# / WinUI 3
+ember,REJECTED,Explicitly excluded per curation guidelines.
+app name,REJECTED,Explicitly excluded per curation guidelines.
+whim,REJECTED,Explicitly excluded per curation guidelines.
+generic web wrapper ai chat,REJECTED,Explicitly excluded per curation guidelines (Electron/web wrapper).
+macsai,REJECTED,Explicitly excluded per curation guidelines.
+files winui,REJECTED,Explicitly excluded per curation guidelines.
+pcbjam,REJECTED,Explicitly excluded per curation guidelines.
+scissor studio,REJECTED,Explicitly excluded per curation guidelines.
+GitBar,REJECTED,Rejected due to using React Native framework rather than pure native stack.
