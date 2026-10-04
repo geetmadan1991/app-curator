@@ -12,26 +12,36 @@ client = genai.Client(api_key=api_key)
 
 # 2. Dynamic Model Selection Function
 def get_best_lite_model(client: genai.Client) -> str:
-    """Queries available models dynamically and picks the newest active lite/flash model."""
+    """Queries available models and picks an active flash/lite model cleanly."""
     try:
-        lite_models = []
-        for model in client.models.list():
-            name = model.name.lower()
-            # Look for flash or lite models
-            if "flash" in name or "lite" in name:
-                lite_models.append(model.name)
+        # Request available models list
+        available = [m.name.replace("models/", "") for m in client.models.list()]
         
-        if lite_models:
-            lite_models.sort()
-            # Extract clean model string (e.g., 'models/gemini-3.8-flash' -> 'gemini-3.8-flash')
-            return lite_models[-1].replace("models/", "")
+        # Priority order: newest fast models first
+        priority_targets = [
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-1.5-flash-lite",
+            "gemini-1.5-flash"
+        ]
+        
+        for target in priority_targets:
+            if target in available:
+                return target
+                
+        # If listed names differ slightly, fallback to first matching 'flash' model
+        flash_models = [name for name in available if "flash" in name]
+        if flash_models:
+            return flash_models[0]
+            
     except Exception as e:
-        print(f"Dynamic model lookup warning: {e}. Falling back to default.")
+        print(f"Dynamic model lookup warning: {e}. Using fallback.")
     
-    return "gemini-3.8-flash"
+    # Safe default fallback if listing fails
+    return "gemini-2.5-flash"
 
 selected_model = get_best_lite_model(client)
-print(f"Using dynamically selected model: {selected_model}")
+print(f"Using model: {selected_model}")
 
 # 3. Native App Curation Prompt
 prompt = """
@@ -58,7 +68,7 @@ Each app MUST use this exact HTML structure:
 Return ONLY valid HTML elements inside a single <div> wrapper. Do not wrap in markdown code blocks like ```html.
 """
 
-# 4. Generate Content using the Dynamic Model
+# 4. Generate Content using the Selected Model
 response = client.models.generate_content(
     model=selected_model,
     contents=prompt,
