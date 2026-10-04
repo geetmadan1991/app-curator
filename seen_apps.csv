@@ -1,3 +1,8 @@
 App Name,Status,Details
 MacSai,ACCEPTED,Swift 6 / SwiftUI
 Generic Web Wrapper AI Chat,REJECTED,Excluded due to being a single-prompt ChatGPT API wrapper using Electron web technologies.
+Whim,ACCEPTED,.NET / AppKit (Native AOT)
+Ember,ACCEPTED,SwiftUI / Combine
+Files WinUI,ACCEPTED,C# / WinUI 3
+Scissor Studio,REJECTED,Rejected because it is a WebAssembly PWA browser-based design tool rather than a native platform-compiled desktop application.
+PCBJam,REJECTED,Rejected because it is a browser port of KiCad running inside web standards rather than a native desktop binary.
