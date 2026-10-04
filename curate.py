@@ -12,7 +12,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# Load previously seen apps from CSV
+# 2. Load historical apps from CSV to prevent repeating
 CSV_FILE = "seen_apps.csv"
 seen_apps = set()
 
@@ -25,7 +25,7 @@ if os.path.exists(CSV_FILE):
 
 print(f"Loaded {len(seen_apps)} previously processed apps from history.")
 
-# 2. Select active model
+# 3. Select active model
 def get_active_model(client: genai.Client) -> str:
     priority_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
     try:
@@ -38,62 +38,78 @@ def get_active_model(client: genai.Client) -> str:
     return "gemini-3.5-flash-lite"
 
 selected_model = get_active_model(client)
+print(f"Executing curation with model: {selected_model}")
 
-# 3. Prompt requesting structured evaluation + HTML output
+# 4. Curation Prompt
 prompt = f"""
 You are an expert native software curation agent.
 Search Product Hunt, Show HN, GitHub, and Reddit for native application launches for macOS, Windows, and iPadOS from the past week.
 
 DO NOT evaluate these previously processed apps: {list(seen_apps)}
 
-EVALUATION CRITERIA:
-- REJECT: Electron web wrappers, single-prompt ChatGPT skins, web apps, bookmarklets.
-- ACCEPT: Native tech stacks (Swift, C++, Rust, WinUI 3, Metal, Vulkan, native system integration).
+CRITICAL FILTERS:
+1. EXCLUDE all "vibe-coded" Electron web wrappers, single-prompt ChatGPT API skins, landing page prototypes, and web bookmarklets.
+2. INCLUDE ONLY genuine native engineering (Swift, SwiftUI, C++, Rust, WinUI 3, Metal, Vulkan).
 
-Return a valid JSON object matching this schema:
-{{
-  "accepted_apps": [
-    {{
-      "name": "App Name",
-      "platform": "macOS",
-      "url": "https://...",
-      "description": "2-sentence summary",
-      "tech_stack": "Swift / Menu Bar",
-      "html_card": "<div class=\\"app-card\\">...</div>"
-    }}
-  ],
-  "rejected_apps": [
-    {{
-      "name": "Rejected App Name",
-      "reason": "Electron wrapper / Web skin"
-    }}
-  ]
-}}
+Output your results as a JSON block wrapped in ```json ... ``` with two keys:
+1. "accepted": list of objects with "name", "platform", "url", "description", "tech_stack", and "html_card".
+2. "rejected": list of objects with "name" and "reason".
+
+Each "html_card" inside "accepted" MUST use this exact HTML structure:
+<div class="app-card">
+  <div class="card-header">
+    <h3>App Name</h3>
+    <span class="platform-badge macos">macOS</span>
+  </div>
+  <p><a href="URL_HERE" target="_blank">View Release / Source</a></p>
+  <p>2-sentence description of what the app does and why it stands out.</p>
+  <span class="quality-tag">Native Tech Stack</span>
+</div>
 """
 
+# 5. Generate Content using Search Tool
 response = client.models.generate_content(
     model=selected_model,
     contents=prompt,
     config=types.GenerateContentConfig(
         tools=[{"google_search": {}}],
-        response_mime_type="application/json"
     ),
 )
 
-data = json.loads(response.text)
+raw_text = response.text or ""
 
-# Append results to seen_apps.csv
+# Extract JSON string from markdown code blocks
+json_match = re.search(r"```json\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
+if json_match:
+    json_str = json_match.group(1)
+else:
+    # Fallback to general curly brace matching if markdown code fence is missing
+    json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+    json_str = json_match.group(0) if json_match else "{}"
+
+try:
+    data = json.loads(json_str)
+except Exception as e:
+    print(f"Failed to parse JSON: {e}\nRaw Output was:\n{raw_text}")
+    data = {"accepted": [], "rejected": []}
+
+accepted_apps = data.get("accepted", [])
+rejected_apps = data.get("rejected", [])
+
+# 6. Save results to CSV and dashboard.html
+file_exists = os.path.exists(CSV_FILE)
 with open(CSV_FILE, mode="a", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
+    if not file_exists:
+        writer.writerow(["App Name", "Status", "Details"])
     
-    for app in data.get("accepted_apps", []):
-        writer.writerow([app["name"], "ACCEPTED", app.get("tech_stack", "Native")])
-        
-        # Append HTML to dashboard
-        with open("dashboard.html", "a", encoding="utf-8") as dash:
-            dash.write("\n\n" + app["html_card"])
-            
-    for app in data.get("rejected_apps", []):
-        writer.writerow([app["name"], "REJECTED", app.get("reason", "Non-native")])
+    for app in accepted_apps:
+        writer.writerow([app.get("name", "Unknown"), "ACCEPTED", app.get("tech_stack", "Native")])
+        if "html_card" in app:
+            with open("dashboard.html", "a", encoding="utf-8") as dash:
+                dash.write("\n\n" + app["html_card"])
+                
+    for app in rejected_apps:
+        writer.writerow([app.get("name", "Unknown"), "REJECTED", app.get("reason", "Non-native")])
 
-print(f"Logged {len(data.get('accepted_apps', []))} accepted and {len(data.get('rejected_apps', []))} rejected apps to {CSV_FILE}.")
+print(f"Processed {len(accepted_apps)} accepted and {len(rejected_apps)} rejected apps.")
