@@ -12,7 +12,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 2. Load historical apps from CSV to prevent repeating
+# 2. Read previously processed apps from CSV
 CSV_FILE = "seen_apps.csv"
 seen_apps = set()
 
@@ -23,51 +23,55 @@ if os.path.exists(CSV_FILE):
             if row:
                 seen_apps.add(row[0].strip().lower())
 
-print(f"Loaded {len(seen_apps)} previously processed apps from history.")
+print(f"Loaded {len(seen_apps)} historical apps from CSV.")
 
-# 3. Select active model
+# 3. Model Selector
 def get_active_model(client: genai.Client) -> str:
-    priority_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
+    priority = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]
     try:
         available = [m.name.replace("models/", "") for m in client.models.list()]
-        for target in priority_models:
+        for target in priority:
             if target in available:
                 return target
     except Exception as e:
-        print(f"Model listing notice: {e}")
+        print(f"Model lookup fallback: {e}")
     return "gemini-3.5-flash-lite"
 
 selected_model = get_active_model(client)
-print(f"Executing curation with model: {selected_model}")
+print(f"Using model: {selected_model}")
 
-# 4. Curation Prompt
+# 4. Multi-Platform Prompting Strategy
 prompt = f"""
 You are an expert native software curation agent.
-Search Product Hunt, Show HN, GitHub, and Reddit for native application launches for macOS, Windows, and iPadOS from the past week.
+Search Product Hunt, GitHub Releases, Show HN, and Reddit for native desktop/tablet app launches from the past week.
 
-DO NOT evaluate these previously processed apps: {list(seen_apps)}
+DO NOT process these previously evaluated apps: {list(seen_apps)}
 
-CRITICAL FILTERS:
-1. EXCLUDE all "vibe-coded" Electron web wrappers, single-prompt ChatGPT API skins, landing page prototypes, and web bookmarklets.
-2. INCLUDE ONLY genuine native engineering (Swift, SwiftUI, C++, Rust, WinUI 3, Metal, Vulkan).
+PLATFORM MANDATE:
+You MUST return a balanced set of native apps covering ALL THREE platforms:
+1. At least 1 macOS app (Swift / SwiftUI / Metal)
+2. At least 1 Windows app (WinUI 3 / C# / Rust / C++)
+3. At least 1 iPadOS app (SwiftUI / PencilKit)
 
-Output your results as a JSON block wrapped in ```json ... ``` with two keys:
-1. "accepted": list of objects with "name", "platform", "url", "description", "tech_stack", and "html_card".
-2. "rejected": list of objects with "name" and "reason".
+EXCLUDE: All Electron, Tauri, Web-wrapper, or simple API skins.
 
-Each "html_card" inside "accepted" MUST use this exact HTML structure:
-<div class="app-card">
-  <div class="card-header">
-    <h3>App Name</h3>
-    <span class="platform-badge macos">macOS</span>
-  </div>
-  <p><a href="URL_HERE" target="_blank">View Release / Source</a></p>
-  <p>2-sentence description of what the app does and why it stands out.</p>
-  <span class="quality-tag">Native Tech Stack</span>
-</div>
+Return a valid JSON code block wrapped in ```json ... ``` with two root keys:
+"accepted" and "rejected".
+
+Each object in "accepted" MUST have:
+- "name": string
+- "platform": "macOS" | "Windows" | "iPadOS"
+- "category": "dev" (for Developer/System) OR "prod" (for Productivity/Creative)
+- "url": string
+- "image_url": "https://..." (Direct URL to project screenshot, logo, or open-graph banner image. Fallback to a relevant Unsplash tech image URL if none found)
+- "description": "2 concise sentences explaining functionality."
+- "tech_stack": e.g. "Rust / WinUI 3" or "SwiftUI / Metal"
+
+Each object in "rejected" MUST have:
+- "name": string
+- "reason": string
 """
 
-# 5. Generate Content using Search Tool
 response = client.models.generate_content(
     model=selected_model,
     contents=prompt,
@@ -78,25 +82,58 @@ response = client.models.generate_content(
 
 raw_text = response.text or ""
 
-# Extract JSON string from markdown code blocks
+# Extract JSON response block
 json_match = re.search(r"```json\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
 if json_match:
     json_str = json_match.group(1)
 else:
-    # Fallback to general curly brace matching if markdown code fence is missing
     json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
     json_str = json_match.group(0) if json_match else "{}"
 
 try:
     data = json.loads(json_str)
 except Exception as e:
-    print(f"Failed to parse JSON: {e}\nRaw Output was:\n{raw_text}")
+    print(f"JSON Parse Error: {e}\nRaw response:\n{raw_text}")
     data = {"accepted": [], "rejected": []}
 
 accepted_apps = data.get("accepted", [])
 rejected_apps = data.get("rejected", [])
 
-# 6. Save results to CSV and dashboard.html
+# 5. Inject Cards into dashboard.html & append CSV
+if os.path.exists("dashboard.html"):
+    with open("dashboard.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    for app in accepted_apps:
+        platform_class = app.get("platform", "macOS").lower()
+        image_src = app.get("image_url", "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop")
+        
+        card_html = f"""
+        <div class="app-card">
+          <img class="app-media" src="{image_src}" alt="{app.get('name')} screenshot" onerror="this.src='https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop';">
+          <div class="app-body">
+            <div class="card-header">
+              <span class="app-title">{app.get('name')}</span>
+              <span class="badge {platform_class}">{app.get('platform')}</span>
+            </div>
+            <p class="description">{app.get('description')}</p>
+            <div class="card-footer">
+              <span class="tech-tag">{app.get('tech_stack', 'Native')}</span>
+              <a href="{app.get('url')}" target="_blank" class="source-link">View Project →</a>
+            </div>
+          </div>
+        </div>
+        """
+        
+        # Inject into Developer or Productivity grid target
+        target_grid_id = 'id="dev-grid">' if app.get("category") == "dev" else 'id="prod-grid">'
+        if target_grid_id in html_content:
+            html_content = html_content.replace(target_grid_id, target_grid_id + "\n" + card_html)
+
+    with open("dashboard.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+# Update CSV Log
 file_exists = os.path.exists(CSV_FILE)
 with open(CSV_FILE, mode="a", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
@@ -104,12 +141,8 @@ with open(CSV_FILE, mode="a", newline="", encoding="utf-8") as f:
         writer.writerow(["App Name", "Status", "Details"])
     
     for app in accepted_apps:
-        writer.writerow([app.get("name", "Unknown"), "ACCEPTED", app.get("tech_stack", "Native")])
-        if "html_card" in app:
-            with open("dashboard.html", "a", encoding="utf-8") as dash:
-                dash.write("\n\n" + app["html_card"])
-                
+        writer.writerow([app.get("name"), "ACCEPTED", app.get("tech_stack")])
     for app in rejected_apps:
-        writer.writerow([app.get("name", "Unknown"), "REJECTED", app.get("reason", "Non-native")])
+        writer.writerow([app.get("name"), "REJECTED", app.get("reason")])
 
-print(f"Processed {len(accepted_apps)} accepted and {len(rejected_apps)} rejected apps.")
+print(f"Successfully processed {len(accepted_apps)} multi-platform native apps.")
