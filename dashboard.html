@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Native App Curation Dashboard</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
+    h1 { border-bottom: 2px solid #334155; padding-bottom: 0.5rem; color: #38bdf8; }
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+    .app-card { background: #1e293b; border-radius: 8px; padding: 1.5rem; border: 1px solid #334155; }
+    .card-header { display: flex; justify-space-between: space-between; align-items: center; }
+    .platform-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+    .macos { background: #0284c7; color: white; }
+    .windows { background: #2563eb; color: white; }
+    .ipados { background: #7c3aed; color: white; }
+    .quality-tag { font-size: 0.8rem; color: #94a3b8; display: block; margin-top: 1rem; font-style: italic; }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Native App Releases</h1>
+  <div id="runs-container">
+    <!-- Automated runs will append new content below this line -->
