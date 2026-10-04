@@ -25,10 +25,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python curate.py
 
-      - name: Commit updated HTML to repository
+      - name: Commit and push changes
         run: |
-          git config --global user.name "GitHub Action Curator"
-          git config --global user.email "action@github.com"
-          git add dashboard.html
-          git commit -m "Auto-curated new native apps" || exit 0
-          git push
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard.html seen_apps.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-curated native apps and updated history" && git push)
